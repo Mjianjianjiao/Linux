@@ -1,0 +1,5 @@
+vector:myvector.cc
+	g++ -std=c++11 -o $@ $^ -g
+.PHONY:clean
+clean:
+	rm -f vector
