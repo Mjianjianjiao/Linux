@@ -127,14 +127,10 @@ void CountSort(int* num,int n)
   free(arr);
 }
 
-void Onesort(int* num,int left ,int right)
+int Onesort(int* num,int left ,int right) //一次排序
 {
   assert(num);
-  int start=left;
-  int end=right;
   int key=num[left];
-    if(left>=right)
-    return ;
   while(left<right)
   {
     while(left<right&&num[right]>=key)
@@ -145,13 +141,19 @@ void Onesort(int* num,int left ,int right)
     num[right]=num[left];
   }
   num[right]=key; 
-  Onesort(num,start,left);
-  Onesort(num,right+1,end);
-}
+   return right;
 
-void QuickSort(int* num,int n)
+}
+//快速排序
+void QuickSort(int* num,int left,int right)
 {
-    Onesort(num,0,n-1);
+
+  if(left>=right)  //递归终止条件
+    return ;
+
+  int mid=Onesort(num,left,right);
+    QuickSort(num,left,mid-1);
+    QuickSort(num,mid+1,right);
 }
 
 
@@ -164,22 +166,20 @@ void swap(int* a,int* b)
   *b=tmp;
 }
 
-void Heapjust(int* num,int n,int i)
+void Heapjust(int* num,int n,int parent)
 {
- int  parent=i;
- int  child=parent*2+1;
- int tmp=0;
  while(parent<n)
   {
-     child=parent*2+1;
+     int child=parent*2+1;
      if(child+1<n&&num[child]<num[child+1])
      {
        child++;
      }
+    
      if(num[parent]<num[child])
      swap(&num[parent],&num[child]);
-     else break;
-    parent=child;
+    
+     parent=child;
 }
 
 }
@@ -191,7 +191,6 @@ void Heapsort(int *num,int n)
   for(i=n/2-1;i>=0;i--)
     Heapjust(num,n,i);
 
-
   i=n-1;
   while(i>=0)
   {  
@@ -200,7 +199,6 @@ void Heapsort(int *num,int n)
      Heapjust(num,i,0);
   }
 
-  printf("%d\n",n);
 }
 
 int main()
@@ -213,9 +211,9 @@ int main()
 //  SelectSort(num,n);
 //  BubbleSort(num,n);
 //  CountSort(num,n);
-//  QuickSort(num,n);
+//  QuickSort(num,0,n-1);
     Heapsort(num,n);
-    printf("%d",n);
+   // printf("%d",n);
     Print(num,n);
 };
 
