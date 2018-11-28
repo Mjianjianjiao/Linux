@@ -3,10 +3,11 @@
       template<class value_type>
       void mylist::List<value_type>::Clear()
       {   
-        while(_node->_next != _node)
+        while(_hnode->_next != _hnode)
         {
           Pop_back();
         }
+
       }
 
       template<class value_type>
@@ -17,7 +18,7 @@
         {
           if(*it == value)
           {
-            it=Erase(it);
+            it = Rrase(it);
           }
           else it++;
         }
@@ -87,9 +88,20 @@ void Test1()
 void Test2()
 {
 
-   int arr[]={1,2,2,3,3,2,3,5,5,5,6,5,5};
-   mylist::List<int> list3(arr,arr+sizeof(arr)/sizeof(int));
-   mylist::List<int>::iterator it3 = list3.begin();
+   cout<<"222"<<endl;
+   int arr[]={1,2,2,5};
+
+   mylist::List<int> list2(19,10);
+//   mylist::List<int> list3(list2);
+mylist::List<int> list3(arr,arr+sizeof(arr)/sizeof(arr[0]));
+   
+
+//   mylist::List<int> list3(4,10);
+//   list3.Clear();
+
+   
+   cout<<"333"<<endl;
+   mylist::List<int>::reverse_iterator it3 = list3.rbegin();
    
 //  list3.Erase(list3.begin());
   // list3.Pop_back();
@@ -98,9 +110,11 @@ void Test2()
    //list3.Pop_front();
   // list3.Remove(2);
   // list3.Clear();
+  cout<<"1111"<<endl;
   list3.Unique();
-   it3 = list3.begin();
-   while(it3 != list3.end())
+//  list3.Clear();
+   it3 = list3.rbegin();
+   while(it3 != list3.rend())
    {
      cout<<*it3<<" ";
      it3++;
