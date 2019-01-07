@@ -53,7 +53,11 @@ public:
       std::string resp;
       service(buf,&resp);
 
-      socket_.Send(new_sockfd, resp);
+      if(!socket_.Send(new_sockfd, resp)){
+        
+        std::cout << "send failed , connect stop" << std::endl;
+      continue;
+      }
       
       std::cout << "server echo # " << resp << std::endl; 
       }

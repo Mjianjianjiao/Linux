@@ -101,6 +101,9 @@ class Tcp_Socket{
       if(ret < 0){
         return false;
       }
+      if(ret == 0){
+        return false;
+      }
 
       buf->assign(tmp, ret);
       return true;
