@@ -23,7 +23,7 @@ class Shared_ptr{
 
     Shared_ptr& operator=(Shared_ptr<T>& sp){
       //判断是否自己给自己赋值
-      if(this == &sp){
+      if(this != &sp){
         Realese(); //释放旧的管理的资源
 
         _ptr = sp._ptr;
