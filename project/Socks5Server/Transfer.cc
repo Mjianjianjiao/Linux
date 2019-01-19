@@ -1,11 +1,12 @@
 #include "Head.h"
 #include "Transfer.h"
+#include "TraceLog.h"
 
 void TransferServer::ConnectEveneHandel(int connectfd){
 
   //连接到socks服务器
   int socks5fd = socket(AF_INET, SOCK_STREAM, 0);
-  if(socks5fd == -1){
+  if(socks5fd < 0){
     ErrorLog("socket");
     return;
   }
@@ -15,20 +16,21 @@ void TransferServer::ConnectEveneHandel(int connectfd){
       return;
       }
 
-  //创建服务器 与 客户端的来连接通道
+  //创建服务器 与 客户端的连接通道
   Connect* connect = new Connect;
-  connect->_clientChannel.fd = fd;
+  //将通道信息保存下来
+  connect->_clientChannel._fd= connectfd;
   connect->_clientChannel._event = EPOLLIN;
 
-  OpEvent(fd, connect->_clientChannel._event, );
+  OpEvent(connectfd, connect->_clientChannel._event, EPOLL_CTL_ADD);
   
-  connect->serverChannel._fd = socks5fd;
+  connect->_serverChannel._fd = socks5fd;
 
-  _connectMap[fd] = connect;
+  _connectMap[connectfd] = connect;
   _connectMap[socks5fd] = connect;
+  //
 
 
-I
 }
 
 void TransferServer::WriteEventHnadel(int connectfd){
@@ -36,28 +38,30 @@ void TransferServer::WriteEventHnadel(int connectfd){
   
 }
 
-void TransferServer::ReadEventHandel(int connectfd){
+void TransferServer::ReadEventHandel(int fd){
 
-  map<int, Connect*>::iterator it = _connectMap.find(fd);
-  if(it != _connect){
-    
+  std::map<int, Connect*>::iterator it = _connectMap.find(fd);
+  if(it != _connectMap.end()){
+   //先识别是从哪一边到哪一边的， 
     Connect* connect = it->second;
-    Channel* clientChannel = connect->_clientChannel; 
-    Channel* serverChannel = connect->_serverChannel;
+    Channel* clientChannel = &(connect->_clientChannel); 
+    Channel* serverChannel = &(connect->_serverChannel);
 
     if(fd == serverChannel->_fd){
    
       //完成复用
-      swap(clientChannel, serverChannel);
+      std::swap(clientChannel, serverChannel);
     }
 
-    Forording(client);
+    
+    //zhun fa 
+    Forwarding(clientChannel, serverChannel);
   }
 }
 
 int main(){
   
   TransferServer server("");
-  server.Strat();
+  server.Strat("", 8000, 8001);
 
 }

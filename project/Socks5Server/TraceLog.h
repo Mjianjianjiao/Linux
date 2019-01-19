@@ -30,7 +30,7 @@ inline static void __TraceDebug(const char* filename, int line, const char* func
 #endif 
 }
 
-inline static void __ErrorLog(const char* filename, int line, const char* function, const char* format, ...){
+inline static void __ErrorDebug(const char* filename, int line, const char* function, const char* format, ...){
 
 #ifdef __DEBUG__ 
 //调用函数信息

@@ -1,6 +1,6 @@
 #pragma once 
 #include "Head.h"
-
+#include "TraceLog.h"
 
 typedef struct sockaddr_in sockaddr_in;
 typedef struct sockaddr sockaddr;
@@ -31,11 +31,38 @@ class EpollServer{
     // 事件循环
     void EventLoop();
 
-    virtual void ConnectEveneHandel() = 0;
-    virtual void ReadEventHandel() = 0;
-    virtual void WriteEventHnadel() = 0;
+    virtual void ConnectEventHandel(int connectfd) = 0;
+    virtual void ReadEventHandel(int connectfd) = 0;
+    virtual void WriteEventHnadel(int fd);
 
-   
+  
+    
+    void SetNonblocking(int fd){
+      int flags = fcntl(fd, F_GETFL, 0);
+      if(flags == -1)
+        ErrorLog("SetNoblocking: F_GETFL");
+
+      flags |= O_NONBLOCK;
+      int s = fcntl(fd, F_SETFL, flags);
+      if(s == -1)
+        ErrorLog("SetNonblocking: F_SETFL");
+    }
+    enum Socks5State{
+            
+      AUTH,
+      ESTABLISHED,
+      FORWARDING
+    };
+
+    void OpEvent(int fd, int events, int how){
+      struct epoll_event event;
+      event.events = events;
+      event.data.fd = fd;
+
+      if(epoll_ctl(_eventfd, how, fd, &event) < 0){
+        ErrorLog("epoll_ctl(how : %d , fd : %d )", how, fd);
+      }
+    }
     
     //通道
     struct Channel{
@@ -52,13 +79,21 @@ class EpollServer{
         }
     };
 
-    void Forwording(Channel* clientChannel, Channel* serverChannel);
+    void Forwarding(Channel* clientChannel, Channel* serverChannel);
 
-
+    void RemoveConnect(int fd);
+        
 
     struct Connect{
+      Socks5State _state;
       Channel _clientChannel; //客户端通道
       Channel _serverChannel; //服务器通道
+      int _ref;
+
+      Connect()
+        :_state(AUTH)
+         ,_ref(0)
+      {}
     };
 
   private:

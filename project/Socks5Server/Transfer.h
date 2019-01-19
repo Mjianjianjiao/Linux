@@ -6,7 +6,7 @@ class TransferServer : public EpollServer{
   public:
     TransferServer(const char* socks5ServerIP, int socks5ServerPort, int selfPort = 8000)
       :EpollServer(selfPort){
-         
+     //需要连接socks5服务器的IP端口，以及自己启动时需要的端口继承自父类的数据    
         memset(&_socks5addr, 0, sizeof(struct sockaddr_in) );
         _socks5addr.sin_family = AF_INET;
         _socks5addr.sin_port = htons(socks5ServerPort);
@@ -17,9 +17,9 @@ class TransferServer : public EpollServer{
     virtual void ReadEventHandel(int connectfd);
     virtual void WriteEventHnadel(int connectfd);
 
-
+//子类不写虚函数，会继承父类虚的属性，没有需要清理的无需谐函数
     
 
   protected: 
-    struct sockaddr_in _socks5addr;
+    struct sockaddr_in _socks5addr;  //socks5server的地址
 };
