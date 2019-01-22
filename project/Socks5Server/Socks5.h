@@ -11,8 +11,6 @@ class Socks5Server : public EpollServer{
 
     int AuthEventHandel(int fd);
     int EstablishedEventHandel(int fd);
-    void RemoveConnect(int fd);
-    void Forwarding(Channel* clientChannel, Channel* serverChannel);
 
     virtual void ConnectEventHandel(int connected);
     virtual void ReadEventHandel(int connected);

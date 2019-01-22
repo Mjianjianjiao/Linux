@@ -1,12 +1,16 @@
 #pragma once 
 #include "Head.h"
 #include "TraceLog.h"
+#include <signal.h>
 
-typedef struct sockaddr_in sockaddr_in;
-typedef struct sockaddr sockaddr;
+class IgnoreSIGPIPE{
+  public:
+    IgnoreSIGPIPE(){
+      ::signal(SIGPIPE, SIG_IGN);
+    }
+};
 
-
-const size_t MAX_EVENT = 100000;
+static IgnoreSIGPIPE initPIPE_IGN;
 
 class EpollServer{
   public:
@@ -21,7 +25,6 @@ class EpollServer{
       if(_listen_sockfd == -1){
         
         close(_listen_sockfd);
-        //event_sockfd_
       }
     }
 
@@ -35,52 +38,54 @@ class EpollServer{
     virtual void ReadEventHandel(int connectfd) = 0;
     virtual void WriteEventHnadel(int fd);
 
-  
-    
-    void SetNonblocking(int fd){
-      int flags = fcntl(fd, F_GETFL, 0);
-      if(flags == -1)
-        ErrorLog("SetNoblocking: F_GETFL");
+	void SetNonblocking(int fd)
+	{
+		
+			int flags, s;
+			flags = fcntl (fd, F_GETFL, 0);
+			if (flags == -1)
+				ErrorLog("SetNonblocking:F_GETFL");
 
-      flags |= O_NONBLOCK;
-      int s = fcntl(fd, F_SETFL, flags);
-      if(s == -1)
-        ErrorLog("SetNonblocking: F_SETFL");
-    }
+			flags |= O_NONBLOCK;
+			s = fcntl (fd, F_SETFL, flags);
+			if (s == -1)
+				ErrorLog("SetNonblocking:F_SETFL");
+		
+	}
+
     enum Socks5State{
             
       AUTH,
       ESTABLISHED,
-      FORWARDING
+      FORWARDING,
     };
 
-    void OpEvent(int fd, int events, int how){
-      struct epoll_event event;
-      event.events = events;
-      event.data.fd = fd;
-
-      if(epoll_ctl(_eventfd, how, fd, &event) < 0){
-        ErrorLog("epoll_ctl(how : %d , fd : %d )", how, fd);
-      }
-    }
-    
+   	void OpEvent(int fd, int events, int op)
+	{
+		struct epoll_event event;
+		event.events = events;
+		event.data.fd = fd;
+		if(epoll_ctl(_eventfd, op, fd, &event) < 0)
+		{
+			ErrorLog("epoll_ctl(op:%d, fd:%d)", op, fd);
+		}
+	}
+  
     //通道
     struct Channel{
       
       int _fd; //描述符
-      int _event;
       std::string _buffer; //读写缓冲区
 
      // bool  _flag；
       
         Channel()
         :_fd(-1)
-        ,_event(0){
-        }
+        {}
     };
 
     void Forwarding(Channel* clientChannel, Channel* serverChannel);
-
+    void SendInLoop(int fd, const char* buf, int len);
     void RemoveConnect(int fd);
         
 
@@ -106,7 +111,6 @@ class EpollServer{
     int _port; // 端kou
     int _listen_sockfd; //监听套接
     int _eventfd; //事件描述符
-    static const size_t MAX_EVENT; //事件数组的大小
 
     std::map<int, Connect*> _connectMap;
 };

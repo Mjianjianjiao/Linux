@@ -15,13 +15,13 @@ void Socks5Server::ConnectEventHandel (int connectfd){
 }
 
 
-//0 表示数据的失败
+//-2 表示信息数据的读取失败
 //1 success
 //-1 faild
 int Socks5Server::AuthEventHandel(int fd){
 
-  int buf[260];
-  int rlen = recv(fd, buf, 260,MSG_PEEK); //探测 并不把数据读走
+  char buf[260];
+  int rlen = recv(fd, buf, 260, MSG_PEEK); //探测 并不把数据读走
   if(rlen < 0){
     return -1;
   }
@@ -29,10 +29,12 @@ int Socks5Server::AuthEventHandel(int fd){
     return -2;
   }
   else {
+    memset(buf, 0, rlen);
     recv(fd, buf, rlen, 0);
-    
+ 
+    printf("buf[0] %d , %d \n" ,buf[0], buf[1]);
     if(buf[0] != 0x05){
-      ErrorLog("not socks5");
+      ErrorLog("not socks5 protocol");
       return -1;
     }
 
@@ -50,7 +52,7 @@ int Socks5Server::EstablishedEventHandel(int fd){
   if(rlen < 10){
     return -2;
   }
-  else if(rlen == -1){
+  else if(rlen <= 0){
     return -1;
   }
   else if(rlen == 1){
@@ -90,6 +92,7 @@ int Socks5Server::EstablishedEventHandel(int fd){
     }
     else if(addr_type == 0x04){
       ErrorLog("dont support ipv6");
+      return -1;
     }
     else{
       ErrorLog("invalid address type");
@@ -116,45 +119,32 @@ int Socks5Server::EstablishedEventHandel(int fd){
 
     return serverfd;
   }
-}
-
-void Socks5Server::RemoveConnect(int fd){
   
-  OpEvent(fd, EPOLLIN, EPOLL_CTL_ADD); 
-  std::map<int, Connect*>::iterator it = _connectMap.find(fd);
-  if(it != _connectMap.end()){
-    Connect* con = it->second; 
-    if(--con->_ref == 0){
-      delete con;
-      _connectMap.erase(it);
-    }
-  }else{
-    assert(false);
-  }
 }
 
 
 
-void Socks5Server::Forwarding(Channel* clientChannel, Channel* serverChannel){
-  
-  char buf[4096];
-  int rlen = recv(clientChannel->_fd, buf, 4096, 0);
-  if(rlen < 0){
-    ErrorLog("recv : %d :" , clientChannel->_fd );
-  }
-  else if(rlen == 0){
-    //client channel 
-    shutdown(serverChannel->_fd, SHUT_WR);
-    RemoveConnect(clientChannel->_fd);  //不一定是真的关闭
-    
-  }
-  else{   
-    
-    if(send(serverChannel->_fd, buf, rlen, 0) < rlen){
-      TraceLog("recv : %d -> send: %d", rlen);
-    }
-  } 
-}
+
+//  void Socks5Server::Forwarding(Channel* clientChannel, Channel* serverChannel){
+//    
+//    char buf[4096];
+//    int rlen = recv(clientChannel->_fd, buf, 4096, 0);
+//    if(rlen < 0){
+//      ErrorLog("recv : %d :" , clientChannel->_fd );
+//    }
+//    else if(rlen == 0){
+//      //client channel 
+//      shutdown(serverChannel->_fd, SHUT_WR);
+//      RemoveConnect(clientChannel->_fd);  //不一定是真的关闭
+//      
+//    }
+//    else{   
+//      
+//      if(send(serverChannel->_fd, buf, rlen, 0) < rlen){
+//        TraceLog("recv : %d -> send: %d", rlen);
+//      }
+//    } 
+//  }
 
 
 
@@ -173,7 +163,7 @@ void Socks5Server::ReadEventHandel(int connectfd){
     rep[0] = 0x05;
     
     int ret = AuthEventHandel(connectfd);
-    if(ret == 0){
+    if(ret == -2){
       return;      
     }
     else if(ret == 1){
@@ -185,9 +175,12 @@ void Socks5Server::ReadEventHandel(int connectfd){
       RemoveConnect(connectfd);
     }
 
-    if(send(connectfd, rep, 2, 0) != 2){
+    int slen = 0;
+    if((slen = send(connectfd, rep, 2, 0) )!= 2){
       ErrorLog("auth reply");
     }
+
+
 
   }else if(con->_state == ESTABLISHED){
 
@@ -196,12 +189,13 @@ void Socks5Server::ReadEventHandel(int connectfd){
     reply[0] = 0x05;
 
     int serverfd = EstablishedEventHandel(connectfd);
+
+    printf("serverfd %d   connectfd %d" , serverfd, connectfd );
     if(serverfd == -1){
       
       reply[1] = 0x01;
       ErrorLog("EstablishedEventHandel failed");
       RemoveConnect(connectfd);
-      return;
 
     }else if(serverfd == -2){
       return;
@@ -214,13 +208,16 @@ void Socks5Server::ReadEventHandel(int connectfd){
       ErrorLog("establich connect failed");
     } 
     
-    SetNonblocking(serverfd);
-    OpEvent(serverfd, EPOLLIN, EPOLL_CTL_ADD);
-    con->_state = FORWARDING;
-    _connectMap[serverfd] = con;
-    con->_state = FORWARDING;
-    con->_ref++;
+    if(serverfd >=0 ){
+     
+      SetNonblocking(serverfd);
+      OpEvent(serverfd, EPOLLIN, EPOLL_CTL_ADD);
+      con->_state = FORWARDING;
+      _connectMap[serverfd] = con;
+      con->_ref++;
+      con->_serverChannel._fd = serverfd;
 
+    }
   }else if(con->_state == FORWARDING){
     
     Channel* clientChannel = &con->_clientChannel;
@@ -248,6 +245,5 @@ void Socks5Server::ReadEventHandel(int connectfd){
 int main(){
 
   Socks5Server server(8001);
-
   server.Start();
 }

@@ -13,9 +13,9 @@ class TransferServer : public EpollServer{
         _socks5addr.sin_addr.s_addr = inet_addr(socks5ServerIP);
       }
 
-    virtual void ConnectEveneHandel(int connectfd);
+    virtual void ConnectEventHandel(int connectfd);
     virtual void ReadEventHandel(int connectfd);
-    virtual void WriteEventHnadel(int connectfd);
+    //virtual void WriteEventHnadel(int connectfd);
 
 //子类不写虚函数，会继承父类虚的属性，没有需要清理的无需谐函数
     

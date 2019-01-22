@@ -1,7 +1,12 @@
 #pragma once 
 #include "Common.h"
 #include <iostream>
-
+#include <stdarg.h>
+#include <errno.h>
+#include <error.h>
+#include <string.h>
+#define   __TRACE__ 
+#define   __DEBUG__
 static std::string GetFileName(const std::string& path){
   char ch = '/';
 
@@ -22,6 +27,7 @@ inline static void __TraceDebug(const char* filename, int line, const char* func
 
   fprintf(stdout, "[TRACE][%s : %d] %s : ", GetFileName(filename).c_str(), line, function);
 
+  va_list args;
   va_start(args, format);
   vfprintf(stdout, format, args);
   va_end(args);
@@ -42,13 +48,15 @@ inline static void __ErrorDebug(const char* filename, int line, const char* func
   vfprintf(stdout, format, args);
   va_end(args);
 
-  fprintf(stdout, " errmsg : %s, errno: %d\n ", sterror(errno), errno);
+  fprintf(stdout, " errmsg : %s, errno: %d\n ", strerror(errno), errno);
 #endif 
 }
 
-#define TraceLog(...)  __TraceDebug(__FILE__, __LINE__, __FUNCTION__, __VA_ARGS__);
+#define TraceLog(...) \
+  __TraceDebug(__FILE__, __LINE__, __FUNCTION__, __VA_ARGS__);
 
-#define ErrorLog(...) __ErrorDebug(__FILE__, __LINE__, __FUNCTION__, __VA_ARGS__);
+#define ErrorLog(...) \
+  __ErrorDebug(__FILE__, __LINE__, __FUNCTION__, __VA_ARGS__);
 
 
 
