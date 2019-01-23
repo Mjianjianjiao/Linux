@@ -13,9 +13,8 @@ void* recv_message(void* arg){
   Server* sp = (Server*)arg;
   std::string message;
   for(;;){
-   // sp->recv_data(message);
-   // std::cout << "debug " << message << std::endl;
-   sleep(1);
+    sp->recv_data(message);
+    std::cout << "debug " << message << std::endl;
   }
 }
 
@@ -23,10 +22,11 @@ void* send_message(void* arg){
   Server* send = (Server*)arg;
   std::string message;
   for(;;){
-
+    send->broadcast();
   }
 }
-int mian (int argc, char* argv[]){
+
+int main (int argc, char* argv[]){
   if(argc != 2){
     useage(argv[0]);
     return -1;
