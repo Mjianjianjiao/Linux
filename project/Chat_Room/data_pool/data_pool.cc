@@ -1,6 +1,8 @@
 #include "data_pool.h"
 
-data_pool::data_pool(int cap):_cap(cap),r_queue(_cap){}
+data_pool::data_pool(int cap):_cap(cap),r_queue(cap){
+  datapool_init();
+}
 
 void data_pool::datapool_init(){
   consume_step = 0;
@@ -23,7 +25,7 @@ void data_pool::get_message(std::string& str){
   sem_wait(&message_sem);
   str = r_queue[consume_step];
   sem_post(&blank_sem);
-  consume_step--;
+  consume_step++;
   consume_step %= _cap;
 
 }

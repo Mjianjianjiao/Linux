@@ -7,10 +7,10 @@ void data::serialize(std::string& out_string){
 
  // Json::Value root;
   ValueObj root;
-  root["_name"] = _name;
-  root["_school"] = _school;
-  root["_message"] = _message;
-  root["_type"] = _type;
+  root["name"] = _name;
+  root["school"] = _school;
+  root["message"] = _message;
+  root["type"] = _type;
 
   Write w;
 //  out_string = w.write(root);
@@ -21,15 +21,16 @@ void data::unserialize(std::string &in_string){
   
   ValueObj root;
   Read r;
-  r.run(in_string, root);
-  std::string name = root["_name"];//.asString();
-  std::string school = root["_school"];//.asString();
-  std::string message = root["_message"];//.asString();
-  std::string type = root["_type"];//.asString();
-  _name = name;
-  _school = school;
-  _message = message;
-  _type = type;
+
+ r.run(in_string,root);                                                             
+  std::string nick_name1 = root["name"];                                       
+  std::string school1 = root["school"];                                             
+  std::string message1 = root["message"];        
+  std::string  type1 = root["type"];
+  _name = nick_name1;
+  _school = school1;
+  _message=message1;
+  _type = type1;
   
 }
 

@@ -1,5 +1,5 @@
 #include "client.h"
-
+#include <assert.h>
 Client::Client(std::string server_ip, int server_port ){
   server.sin_family = AF_INET;
   server.sin_addr.s_addr = inet_addr(server_ip.c_str());
@@ -22,14 +22,15 @@ void Client::recv_data(std::string &out_string){
 
   char buf[SIZE];
   struct sockaddr_in peer;
-  socklen_t len;
+  socklen_t len = sizeof(peer);
   ssize_t s = recvfrom(_sockfd, buf, SIZE, 0, (struct sockaddr*)&peer, &len);
   if(s > 0){
-    buf[s] = 0;
+    buf[s] = 0 ;
     out_string = buf;
-
-  }else {
-    //
+  }else if(s == 0){
+    std::cerr << "server close" << std::endl;
+  }else if(s == -1){
+    std::cerr << "recv error" << std::endl;
   }
 }
 

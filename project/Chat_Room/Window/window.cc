@@ -92,14 +92,6 @@ window::~window(){
 //  w.draw_friend_list();
 //
 //
-//  std::string tips = "Please Enter# ";
-//  std::string message;
-//  int y, x;
-//  while(1){
-//    getmaxyx(w.GetInput(), y, x);
-//    w.PutStringToWindow(w.GetInput(), 1, 1, tips);
-//    w.GetStringFromWindow(w.GetInput(), message);
-//    w.draw_input();
 //  }
 //
 
@@ -121,29 +113,5 @@ window::~window(){
 
 
   
-//  std::string title = "====ChatRoom====";
-//  int i = 1;
-//  int y, x;
-//  int dir = 0;
-//    while(1){
-//   //  w.draw_header();//重新绘制，消除上次的字符
-//      getmaxyx(w.GetHeader(), y, x);
-//       w.PutStringToWindow(w.GetHeader(), y/2, i, title);
-// 
-//       if(i >=  (x - title.size() - 3)){
-//             dir = 1;
-//      }
-//
-//      if(i <= 4){
-//        dir = 0;
-//      }
-//
-//      if(dir == 0 ){
-//        i++;
-//      }else if(dir == 1) 
-//        i--;
-//
-//      usleep(33000);
-//    }
 //  return 0;
 //}

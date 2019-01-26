@@ -4,7 +4,7 @@
 
 
 void useage(std::string proc){
-  std::cout << "usage : " << proc << "port " << std::endl;
+  std::cout << "usage : " << proc << " port " << std::endl;
 }
 
 
@@ -16,6 +16,7 @@ void* recv_message(void* arg){
     sp->recv_data(message);
     std::cout << "debug " << message << std::endl;
   }
+  return NULL;
 }
 
 void* send_message(void* arg){
@@ -23,21 +24,28 @@ void* send_message(void* arg){
   std::string message;
   for(;;){
     send->broadcast();
+    std::cout << "已广播" << std::endl;
   }
+
+  return NULL;
 }
 
-int main (int argc, char* argv[]){
+int main(int argc, char* argv[]){
   if(argc != 2){
     useage(argv[0]);
     return -1;
   }
 
-  Server server(atoi(argv[1]));
+ 
+
+  Server server(atoi(argv[1])); 
   server.Init_Server();
+
 
   pthread_t recv, send;
   pthread_create(&recv, NULL, recv_message, (void*)&server );
   pthread_create(&send, NULL, send_message,(void*)&server);
+
 
   pthread_join(recv, NULL);
   pthread_join(send, NULL);

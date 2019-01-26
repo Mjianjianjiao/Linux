@@ -7,6 +7,7 @@
 #include <string>
 #include "data_pool.h"
 #include <map>
+#include <stdlib.h>
 #define SIZE 1024
 
 class Server{
@@ -21,8 +22,6 @@ class Server{
   private:
     int _sockfd;
     int _port;
-
     data_pool pool;
-
     std::map<uint32_t, struct sockaddr_in> online;
 };
