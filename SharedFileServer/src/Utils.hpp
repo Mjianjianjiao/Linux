@@ -83,7 +83,7 @@ class Utils{
       if(it == g_err_desc.end())
       {
         LOG("Unknow error %s\n", strerror(errno));
-        return NULL;
+        return " Unknow Error";
       }   
       return it->second;
     }
@@ -184,9 +184,10 @@ class HttpResponse
 
         bool ProcessFile(RequestInfo & info) //文件下载功能
         {
-        
+         
+          LOG("进入下载\n");
           std::string rsp_header;
-          rsp_header = info._version + "200 OK\r\n";
+          rsp_header = info._version + " 206 OK\r\n";
           rsp_header += "Connection: close\r\n";
           rsp_header += "Content-Type: " + _mime + "\r\n";
           rsp_header += "Etag: " + _etag + "\r\n";
@@ -194,6 +195,7 @@ class HttpResponse
           rsp_header += "Date: " + _date + "\r\n";
           SendData(rsp_header);
 
+          LOG("rsp_header [ %s ]\n", rsp_header.c_str());
 
 
           int fd = open(info._path_phys.c_str(), O_RDONLY);
@@ -236,7 +238,7 @@ class HttpResponse
           
           rsp_header += "Etag: " + _etag + "\r\n";
           rsp_header += "Last - Modify：" + _mtime + "\r\n";
-          rsp_header += "Date: " + _date + "\r\n";
+          rsp_header += "Date: " + _date + "\r\n\r\n";
       
           SendData(rsp_header);
           LOG("[%s] \n" , rsp_header.c_str());
@@ -244,14 +246,13 @@ class HttpResponse
           //recv收到0 表示本端关闭链接 
           std::string rsp_body;
           rsp_body = "<html><head>";
-          rsp_body += "<title>/index of" + info._path_info +"</title>";
-          rsp_body += "<meta charset = 'UTF-8'>"; 
-          rsp_body +="</head><body>";
-					rsp_body += "<h1>" + info._path_info + "</h1><hr /><ol>";
+          rsp_body += "<meta charset='UTF-8'>"; 
+          rsp_body += "<title>共享文件服务器</title>";
+          rsp_body +="</head><body><h1> 当前文件路径" + info._path_info + "</h1>";
+          rsp_body += "<hr/><ol>";
           //rsp_body += "<input  type >" 
           LOG("[%s] \n" , rsp_body.c_str());
-					SendCData(rsp_body);
-        LOG("rsp_body send \n");
+					SendData(rsp_body);
               //获取目录下的每一个文件，组织处html信息，chunke传输
               //scandir 判断目录下有那些文件  返回值为当前文件数 struct 中有不带路径的文件名列表  取出文件名后 与当前目录进行组合，通过stat获取文件信息  第三个为0 表示不过滤  filt(struct *dirent ) {if(dirent->d->_name, "."){
               //return 1;
@@ -260,49 +261,47 @@ class HttpResponse
               //}}
               //
             
-              std::string path = info._path_phys;
-						
-              struct dirent **p_dirent = NULL;
-              int  num = scandir(info._path_phys.c_str(), &p_dirent, 0, alphasort);
-              LOG("NUM %d\n", num);
-              for(int i = 0; i < num ; ++i){
+            struct dirent **p_dirent = NULL;
+            int  num = scandir(info._path_phys.c_str(), &p_dirent, 0, alphasort);
+            LOG("NUM %d\n", num);
+            for(int i = 0; i < num ; ++i){
 
-                std::string file_html;
-                std::string file = info._path_phys + p_dirent[i]->d_name;  //当前文件的全路径
-                LOG("当前请求展示路径： %s", file.c_str());//要注意此时生成的请求的路径后面不带/， 需要自行添加 
-                struct stat st;
-                if(stat(file.c_str(), &st) < 0)
-                {
-                  LOG("stat error \n");
-                  continue;
-                }
-                std::string mtime;
-                Utils::TimeToGMT(st.st_mtime, mtime);
+              std::string file_html;
+              std::string file = info._path_phys + p_dirent[i]->d_name;  //当前文件的全路径
+              LOG("当前请求展示路径： %s\n", file.c_str());//要注意此时生成的请求的路径后面不带/， 需要自行添加 
+              struct stat st;
+              if(stat(file.c_str(), &st) < 0)
+              {
+                LOG("stat error \n");
+                continue;
+              }
 
-                std::string mime;
-                Utils::GetMime(file, mime);
+              std::string mtime;
+              Utils::TimeToGMT(st.st_mtime, mtime);
 
-                std::string filesize;
-                Utils::DigitTostr(st.st_size / 1024, filesize); //kb
+              std::string mime;
+              Utils::GetMime(file, mime);
 
-               	file_html += "<li><strong><a href=";
-                file_html += info._path_info; //加粗的链接
-                file_html += p_dirent[i]->d_name ;
-                file_html += "'>'"; 
-                file_html += p_dirent[i]->d_name ;
-                file_html +="</a></strong>";
-                file_html += "<br /><small>";
-                file_html += "modified: " + mtime + "<br />";
-                file_html += mime + " - " + filesize + "kbytes";
-                file_html += "<br /><br /></small></li>";
-                SendCData(file_html);
-                LOG("%d %s \n", i, file_html.c_str());
-          }
+              std::string filesize;
+              Utils::DigitTostr(st.st_size / 1024, filesize); //kb
+
+             	file_html += "<li><strong><a href=";
+              file_html += info._path_info; //加粗的链接
+              file_html += p_dirent[i]->d_name ;
+              file_html += ">"; 
+              file_html += p_dirent[i]->d_name ;
+              file_html += "/</a></strong>";
+              file_html += "<br /><small>";
+              file_html += "modified: " + mtime + "<br />";
+              file_html += mime + "-" + filesize + "kbytes";
+              file_html += "<br /><br /></small></li>";
+              SendCData(file_html);
+              LOG("%d %s \n", i, file_html.c_str());
+        }
           
-          rsp_body = "</ol><hr /></body></html>";
+          rsp_body = "</ol><hr/></body></html>";
           SendCData(rsp_body);
           SendCData("");
-         
           return true;
         }
 
@@ -318,14 +317,19 @@ class HttpResponse
 
           //判断协议是否为1.1
             if(data.empty())
+            {
               SendData("0\r\n\r\n");
+            //  LOG("data ISEmpty\n");
+              return true;
+            }
 
+            LOG("data %s", data.c_str());
             std::stringstream ss;
-            ss << data.size();
+            ss << std::hex <<data.size();
             SendData(ss.str());
             SendData("\r\n");
 
-            SendData(data.c_str());
+            SendData(data);
             SendData("\r\n");
             return true;
         }
@@ -390,8 +394,10 @@ class HttpRequest
                 return false;
                 }
               }
-            
+            LOG("ret : %d\n", ret);
+            LOG("[ %s ]\n", buf);
             char* ptr = strstr(buf, "\r\n\r\n");
+            LOG("Ptr %p", ptr);
             if((ptr == NULL) && (ret == MAX_HTTPHDR)){
               _req_info.SetError("413"); //头部太长
               return false;
@@ -402,7 +408,9 @@ class HttpRequest
             }
 
 
+          LOG("recv header3\n");
             int hdr_len = ptr - buf; //读取到的位置减去起始位置，就是头部的长度
+            LOG("hdr_len %d\n", hdr_len);
             _http_header.assign(buf, hdr_len);
             recv(_cli_sock, buf, hdr_len + 4, 0);//将\r\n\r\n读走
             LOG("header:[%s\n]",_http_header.c_str());
@@ -415,10 +423,13 @@ class HttpRequest
         bool PathIsLegal(RequestInfo &info){
           //判断路径是否合法   stat 输出的文件信息，通过他的返回值判断文件是否存在   Linux 文件名的最大长度为256 是一个宏
           //stat获取状态信息出错，表示无法fangwe到文件
-          if(stat(info._path_info.c_str(), &info._st) < 0){
+          LOG("判断文件的是否正确\n");
+          if(stat(info._path_phys.c_str(), &info._st) < 0){
+            LOG("SetError 404\n");
             info.SetError("404");
             return false;
           }
+          LOG("文件正确\n");
          
           char tmp[MAX_PATH] = {0};
           realpath(info._path_phys.c_str(), tmp);  
@@ -473,7 +484,7 @@ class HttpRequest
 
         info._path_phys = WWWROOT + info._path_info;
 
-        LOG("要请求的路径：%s\n", info._path_phys.c_str());
+        LOG("要请求的路径：%s\n", info._path_info.c_str());
         
 
         //realpath 将一个路径转换成据对路径  缺点： 请求路径不存在，会造成段错误,先判断再转换
@@ -525,31 +536,32 @@ class HttpRequest
    //       return true;
    //     }
         bool FileIsDir(RequestInfo &info)
-        {:
+     {
            std::string path = info._path_info; 
           if(info._st.st_mode & S_IFDIR){
               if(path[path.length() - 1] != '/')
               info._path_info.push_back('/');
-              return true;
+              //return true;
               
-          }else{
+          //}else{
               std::string phys = info._path_phys;
               if(phys[phys.length() - 1] != '/')
               info._path_phys.push_back('/');
-              return false;
+              return true;
           }
-          
+          return false;
         }
+
 
        bool FileHandler(RequestInfo &info, HttpResponse &rsp){
      
             
-           rsp.InitResponse(info); //初始化文件响应信息
+           rsp.InitResponse(info); //初化文件响应信息
           
             if(FileIsDir(info)){ //判断文件请求是否是目录
                rsp.ProcessList(info);  //执行展示
              //  LOG();
-            }else{ 
+            }else{
                rsp.ProcessFile(info); //执行文件下载
              }
             return true;

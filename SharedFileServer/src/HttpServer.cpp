@@ -44,13 +44,11 @@ class HttpServer
           //  }
         //  else{
             //不是，执行目录列表/文件下载响应
-            LOG("FileHandler\n"); 
             req.FileHandler(info, rsp);
-            LOG("FileHandler stop\n");
         //  }
      
             //dd if=/dev/zero of=./test.txt bs=1G 
-          
+           return true; 
 
             out: 
             
@@ -147,7 +145,7 @@ int main(int argc, char* argv[]){
   
   HttpServer server;
 
-//  signal(SIGPIPE, );
+  signal(SIGPIPE, SIG_IGN);
   if(server.HttpServerInit(ip, port) == false)
     return -1;
 
