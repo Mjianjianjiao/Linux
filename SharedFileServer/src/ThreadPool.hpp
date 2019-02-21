@@ -28,8 +28,11 @@ class HttpTask{
 
        void Run(){
        
+    
          //通过传入函数，降低了耦合度，方便在外部对处理函数进行修改
            TaskHandler(_cli_sock); 
+          
+
        }
        
        
@@ -49,19 +52,28 @@ class ThreadPool
         pthread_cond_t _cond;  //控制同步
     private:
         static void *thr_start(void *arg){
+         
+          pthread_detach(pthread_self());
           ThreadPool* tp = (ThreadPool *) arg; 
          
-          tp->QueueLock();
-          while(tp->QueueIsEmpty()){
+          while(1){
+            
+            tp->QueueLock();
+            
+            if(tp->IsStop()){
+              tp->QueueUnLock(); 
+              tp->ThreadExit();
+            }
+
             tp->ThreadWait();
+
+            
+            HttpTask ht;
+            ht = tp->PopTask();
+
+            tp->QueueUnLock();
+            ht.Run();
           }
-
-          HttpTask ht;
-          ht = tp->PopTask();
-
-          tp->QueueUnLock();
-          ht.Run();
-          return NULL;
         }
     private:
         void QueueLock(){
@@ -82,15 +94,8 @@ class ThreadPool
           }
 
         void ThreadWait(){
-          
-          if(IsStop()){
-            QueueLock();
-            ThreadExit();
-          }
-
-          while(!QueueIsEmpty())
+          while(QueueIsEmpty())
           pthread_cond_wait(&_cond, &_mutex);
-
         }
         
         void ThreadWakeUpAll(){
@@ -106,7 +111,7 @@ class ThreadPool
     public:
         ThreadPool(int max)
           :_max_thr(max)
-           , _is_stop(true)
+           , _is_stop(false)
         {}
 
         ~ThreadPool(){
@@ -123,16 +128,11 @@ class ThreadPool
             if(ret != 0){
               LOG("thread creat error");
               return false;
-            }
-          }
-
-          if(!IsStop())
-          {
-            //若线程要销毁，则无需等待直接销毁即可
-            QueueLock();     
-            pthread_detach(pid);
+            } 
             _cur_thr++;
-          }
+            LOG("thread create %d", i);
+          } 
+          
           pthread_mutex_init(&_mutex, NULL);
           pthread_cond_init(&_cond, NULL);
           return true;
@@ -140,9 +140,14 @@ class ThreadPool
 
         bool PushTask(HttpTask &tt) // 线程安全的任务入队
         {
+          LOG("lock");
           QueueLock();
           _task_queue.push(tt);
+
+  std::cout << "push success!!" <<std::endl;
+          ThreadWakeUpAll();
           QueueUnLock();
+  std::cout << "unlock success!!" <<std::endl;
           return true;
         }
 

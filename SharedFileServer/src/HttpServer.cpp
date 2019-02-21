@@ -8,11 +8,10 @@
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include "Utils.hpp"
-
+#include <signal.h>
 
 const int MAX_LISTEN = 10;
 const int MAX_THREAD = 20;
-
 
 class HttpServer
 {
@@ -24,32 +23,42 @@ class HttpServer
     private:
         //http任务处理函数
         static bool HttpHandler(int sock){
-//          HttpRequest req(sock);
-//          HttpResponse rsp(sock);
-//          RequestInfo info;
-//
-//          if(req.RecvHttpHeader(info) == false){
-//            goto out;
-//          }//接收请求出错，需要保存错误信息
-//
-//          if(req.ParseHttpHeader(info) == false){
-//            goto out;
-//          }
-//
-//          //判读请求否是cgi请求，
-//          if(info.RequestIsCGI()){
-//            rsp.CGIHandler(info); // 如是cgi 请求，执行Cgi响应
-//          }
-//          else{
-//            //不是，执行目录列表/文件下载响应
-//            rsp.FileHandler(info);
-//          }
-//
-//          out: 
-//            rsp.ErrHandler(info);
-//            close(sock);
-//
-          return true;
+            HttpRequest req(sock);
+            HttpResponse rsp(sock);
+            RequestInfo info;
+
+            LOG("RecvHttpHeader\n");
+            if(req.RecvHttpHeader(info) == false){
+              LOG("request err\n");
+              goto out;
+            }//接收请求出错，需要保存错误信息
+
+            LOG("PraseHttpHeader\n");
+            if(req.ParseHttpHeader(info) == false){
+              goto out;
+            }
+
+          //判读请求否是cgi请求，
+          //  if(req.RequestIsCGI(info)){
+          //    rsp.CGIHandler(info); // 如是cgi 请求，执行Cgi响
+          //  }
+        //  else{
+            //不是，执行目录列表/文件下载响应
+            LOG("FileHandler\n"); 
+            req.FileHandler(info, rsp);
+            LOG("FileHandler stop\n");
+        //  }
+     
+            //dd if=/dev/zero of=./test.txt bs=1G 
+          
+
+            out: 
+            
+           // RequestInfo info1(info);// 测试errhandel
+           // info1._err_code = "404";
+            rsp.ErrHandler(info);
+            close(sock);
+            return true;
         }
     public:
 				HttpServer()
@@ -65,17 +74,24 @@ class HttpServer
 						return false;
 					}
 
+          std::cout << "socket creat success!!" <<std::endl;
+
+          //设置套接字选项，使端口地址可以复用
+          int ov = 1;
+          setsockopt(_serv_sock, SOL_SOCKET, SO_REUSEADDR, (void*)&ov, sizeof(ov));
+
 					struct sockaddr_in  addr;
 					addr.sin_family = AF_INET;
 					addr.sin_port = htons(port);
 				  addr.sin_addr.s_addr = inet_addr(ip.c_str());
           
-					if(bind(_serv_sock, (sockaddr*)&addr, sizeof(addr)) < 0){
+					if(bind(_serv_sock, (sockaddr*)&addr, sizeof(addr)) < 0){   
 						LOG("bind error %s\n",strerror(errno));
 						close(_serv_sock);
 						return false;
 					}
 
+          std::cout << "bind success!!" <<std::endl;
 					if(listen(_serv_sock, MAX_LISTEN) < 0){
 						LOG("liste error %s\n", strerror(errno));
 						close(_serv_sock);
@@ -86,6 +102,8 @@ class HttpServer
 					if(_tp->ThreadPoolInit() == false){
 						LOG("thread pool init error \n");
 					}
+
+          std::cout << "ThreadPool Init success!!" <<std::endl;
 					return true;
 				}
 					
@@ -93,6 +111,7 @@ class HttpServer
         {
           while(1){
 
+          
             sockaddr_in cli_addr;
             socklen_t len = sizeof(cli_addr);
             int sock = accept(_serv_sock, (sockaddr*)&cli_addr, &len);
@@ -101,9 +120,14 @@ class HttpServer
               continue;
             }
 
+            std::cout << "accept success!!  sock "<< sock <<std::endl;
             HttpTask ht;
             ht.SetHttpTask(sock, HttpHandler);
+
+            std::cout << "SetHttpTask success!!" <<std::endl;
             _tp->PushTask(ht);
+
+            std::cout << "PushTask  success!!" <<std::endl;
           }
         }
 };
@@ -115,13 +139,20 @@ void UserTip(char* str){
 int main(int argc, char* argv[]){
 
 
-  if(argc < 2)
+  if(argc <= 2)
   UserTip(argv[0]);
 
   std::string ip = argv[1];
   uint16_t port = atoi(argv[2]);
+  
   HttpServer server;
-  server.HttpServerInit(ip, port);
-  server.Start();
+
+//  signal(SIGPIPE, );
+  if(server.HttpServerInit(ip, port) == false)
+    return -1;
+
+  std::cout << "server start!!" <<std::endl;
+  if(server.Start() == false)
+    return -1;
 
 }
