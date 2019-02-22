@@ -33,11 +33,19 @@ std::unordered_map<std::string, std::string> g_err_desc = {
 //文件的类型
 std::unordered_map<std::string, std::string> g_mime_type = {
   {"txt", "text/plain"},
-  {"400", "Bad Quest"},
-  {"403", "Forbidden"},
-  {"404", "Not Found"},
-  {"405", "Method Not Allowed"},
-  {"413", "Request Entity Too Large"}
+  {"rtf", "application/rtf"},
+  {"gif", "image/gif"},
+  {"jpg", "image/jpeg"},
+  {"avi", "video/x-msvideo"},
+  {"gz",  "application/x-gzip"},
+  {"tar", "application/x-tar"},
+  {"mpg","video/mpeg"},
+  {"au", "audio/basic"},
+  {"midi","audio/midi"},
+  {"ra", "audio/x-pn-realaudio"},
+  {"ram", "audio/x-pn-realaudio"},
+  {"midi","audio/x-midi"},
+  {"html", "text/html"}
 };
 
 
@@ -117,6 +125,8 @@ class Utils{
         mime = g_mime_type["unknow"];
         return;
       }
+
+     //
       std::string suffix = file.substr(pos + 1);
       auto it = g_mime_type.find(suffix);
       if(it == g_mime_type.end()){
@@ -146,11 +156,7 @@ class RequestInfo{
            _err_code = str;
         }
 
-     //   bool RequestIsCGI(){
-     //     if((_method == "GET") && !_query_string.empty() || ()_method == "POST")
-     //       return ture;
-     //     return false;
-     //   }
+     
 };
 
 class HttpResponse
@@ -179,6 +185,7 @@ class HttpResponse
       //   _etag += req_info._st.st_size;  //文件大小
      
           Utils::DigitTostr(req_info._st.st_size, _fsize);
+          _mime = _gesc_
            return true;
         }
 
@@ -229,8 +236,7 @@ class HttpResponse
         {
           LOG("AT ProcessList \n");
           std::string rsp_header;
-          rsp_header = info._version + " 200 OK\r\n";
-          rsp_header += "Connection: close\r\n";
+          rsp_header = info._version + " 200 OK\r\n"; rsp_header += "Connection: close\r\n";
           rsp_header += "Content-Type: text/html\r\n";
           if(info._version == "HTTP/1.1"){
               rsp_header += "Transfer-Ecoding: chunked\r\n";
@@ -293,7 +299,7 @@ class HttpResponse
               file_html += "/</a></strong>";
               file_html += "<br /><small>";
               file_html += "modified: " + mtime + "<br />";
-              file_html += mime + "-" + filesize + "kbytes";
+              file_html += mime + "-" + filesize + " kbytes";
               file_html += "<br /><br /></small></li>";
               SendCData(file_html);
               LOG("%d %s \n", i, file_html.c_str());
@@ -325,7 +331,7 @@ class HttpResponse
 
             LOG("data %s", data.c_str());
             std::stringstream ss;
-            ss << std::hex <<data.size();
+            ss << std::hex <<data.size() << "\r\n";
             SendData(ss.str());
             SendData("\r\n");
 
@@ -334,7 +340,106 @@ class HttpResponse
             return true;
         }
 
-        bool ProcessCGI(std::string &file); //CGI请求处理,进行程序替换，需要直到程序文件名称
+        bool ProcessCGI(RequestInfo &info) //CGI请求处理,进行程序替换，需要直到程序文件名称
+        {
+            //创建管道 
+            int in[2];//从子进程进行数据的发送
+            int out[2]; //从子进程接收数据
+
+            if((pipe(in) < 0) || (pipe(out) < 0)){
+              info.SetError("500");
+              ErrHandler(info);
+              return false;
+            }
+
+            pid_t pid;
+            pid = fork();
+            if(pid < 0){
+              info.SetError("500");
+              ErrHandler(info);
+              return false;
+            }else if(pid == 0){
+              //设置请求行数据
+              setenv("METHOD", info._method.c_str(), 1);
+              setenv("PATH_INFO", info._path_info.c_str(), 1);
+              setenv("VERSION", info._version.c_str(), 1);
+              setenv("QUERY_STRING", info._query_string.c_str(), 1);
+
+              //传递首部字段
+              for(auto it = info._hdr_list.begin(); it != info._hdr_list.end(); it++){
+                  setenv(it->first.c_str(), it->second.c_str(), 1);
+              }
+              
+              close(in[1]);
+              close(out[0]);
+
+              dup2(in[0], 0);
+              dup2(out[1], 1);
+
+              execl(info._path_phys.c_str(), info._path_phys.c_str(), NULL);
+              exit(0);
+
+            }
+
+           //父进程关闭in[0] 与 out[1]
+            
+            close(in[0]);
+            close(out[1]);
+
+
+            //父进程向子进程传递正文数据通过out管道，
+            char buf[MAX_BUFF];
+            auto it = info._hdr_list.find("Content-Length"); //如果没有正文就不传递
+            if(it != info._hdr_list.end()){
+              int64_t content_len = Utils::StrToDigit(it->second);
+              int rlen = recv(_cli_sock, buf, MAX_BUFF, 0);
+              if(rlen <= 0)
+                return false;
+
+              if(write(in[1], buf, rlen) < 0)
+                return false;
+            }
+
+            //组织响应头部       
+          std::string rsp_header;
+          rsp_header = info._version + " 200 OK\r\n"; rsp_header += "Connection: close\r\n";
+          rsp_header += "Content-Type: txt/html\r\n";
+          if(info._version == "HTTP/1.1"){
+              rsp_header += "Transfer-Ecoding: chunked\r\n";
+          }
+          rsp_header += "Etag: " + _etag + "\r\n";
+          rsp_header += "Last - Modify：" + _mtime + "\r\n";
+          rsp_header += "Date: " + _date + "\r\n\r\n";
+          SendData(rsp_header.c_str());
+         
+          
+          std::string rsp_body;
+
+          rsp_body = "<html><head>";
+          rsp_body += "<meta charset='UTF-8'>"; 
+          rsp_body += "<title>共享文件服务器</title>";
+          rsp_body +="</head><body><h1> 当前路径" + info._path_info + "</h1>";
+          //rsp_body += "<input  type >" 
+          //按钮
+          rsp_body += "<form action='/upload' method='POST' enctype='multipart/form-data'>";
+          rsp_body += "<input type='file' name='FileUpload' />";
+          rsp_body += "<input type='submit' value='上传' />";
+          rsp_body += "</form>";
+          rsp_body += "<hr /><ol>";
+          
+          SendData(rsp_body.c_str());
+          while(1){
+            char buf[MAX_BUFF] = {0};
+            int rlen = read(out[0], buf, MAX_BUFF);
+            if(rlen == 0)
+              break;
+                            
+            send(_cli_sock, buf, rlen, 0);
+          }
+
+          rsp_body = "<html><body><h1>UPLOAD SUCCESS! </h1></body></html>";
+          SendData(rsp_body.c_str());
+        }
 
         //处理错误响应
         bool ErrHandler(RequestInfo& info){
@@ -362,7 +467,11 @@ class HttpResponse
           send(_cli_sock, rsp_body.c_str(), rsp_body.length(), 0);
         return true;
         }
-
+        
+        void CGIHandler(RequestInfo &info){
+          InitResponse(info);
+          ProcessCGI(info);
+        }
 
  
 };
@@ -525,16 +634,16 @@ class HttpRequest
   //      RequestInfo& GetRequestInfo(); //向外提供解析结果
   //      bool ErrHandler(RequestInfo &info);//处理错误响应
   //      
-  //          bool CGIHandler(RequestInfo &info){
-  //          InitResponse(info); //初始化cgi 响应信息
-  //          ProcessCGI(info); //执行cgi响应
-  //      }
+      //      bool CGIHandler(RequestInfo &info){
+      //         InitResponse(info); //初始化cgi 响应信息
+      //         ProcessCGI(info); //执行cgi响应
+      //  }
   
   
-   //    bool RequestIsCGI(RequestInfo& info){
+   //   bool RequestIsCGI(RequestInfo& info){
 
-   //       return true;
-   //     }
+    //      return true;
+    //   }
         bool FileIsDir(RequestInfo &info)
      {
            std::string path = info._path_info; 
@@ -566,7 +675,12 @@ class HttpRequest
              }
             return true;
         }
-           
+     
+       bool RequestIsCGI(RequestInfo &info){
+          if(((info._method == "GET") && !info._query_string.empty() )|| info._method == "POST")
+            return true;
+          return false;
+        }      
 
    
 };

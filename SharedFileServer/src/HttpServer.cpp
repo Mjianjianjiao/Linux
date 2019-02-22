@@ -39,13 +39,13 @@ class HttpServer
             }
 
           //判读请求否是cgi请求，
-          //  if(req.RequestIsCGI(info)){
-          //    rsp.CGIHandler(info); // 如是cgi 请求，执行Cgi响
-          //  }
-        //  else{
+            if(req.RequestIsCGI(info)){
+             rsp.CGIHandler(info); // 如是cgi 请求，执行Cgi响
+            }
+          else{
             //不是，执行目录列表/文件下载响应
             req.FileHandler(info, rsp);
-        //  }
+          }
      
             //dd if=/dev/zero of=./test.txt bs=1G 
            return true; 
