@@ -40,13 +40,15 @@ class HttpServer
 
           //判读请求否是cgi请求，
             if(req.RequestIsCGI(info)){
-             rsp.CGIHandler(info); // 如是cgi 请求，执行Cgi响
+            rsp.CGIHandler(info); // 如是cgi 请求，执行Cgi响
             }
-          else{
+         else{
             //不是，执行目录列表/文件下载响应
             req.FileHandler(info, rsp);
+            LOG("处理玩腻");
           }
-     
+    
+          close(sock);
             //dd if=/dev/zero of=./test.txt bs=1G 
            return true; 
 
@@ -137,9 +139,10 @@ void UserTip(char* str){
 int main(int argc, char* argv[]){
 
 
-  if(argc <= 2)
+  if(argc <= 2){
   UserTip(argv[0]);
-
+  return 0;
+  }
   std::string ip = argv[1];
   uint16_t port = atoi(argv[2]);
   
