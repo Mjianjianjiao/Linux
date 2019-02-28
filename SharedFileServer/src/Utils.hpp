@@ -347,8 +347,8 @@ class HttpResponse
     bool ProcessCGI(RequestInfo &info) //CGI请求处理,进行程序替换，需要直到程序文件名称
     {
       //创建管道 
-      int in[2];//从子进程向父进程传递结果
-      int out[2]; //父进程向子进程传递正文数据
+      int in[2];//从父进程向子进程传递正文数据
+      int out[2]; //子进程向父进程传递结果
 
       if((pipe(in) < 0) || (pipe(out) < 0)){
         info.SetError("500");
@@ -395,7 +395,7 @@ class HttpResponse
       //父进程向子进程传递正文数据通过out管道，
       auto it = info._hdr_list.find("Content-Length"); //如果没有正文就不传递
       if(it != info._hdr_list.end()){
-        char buf[MAX_BUFF];
+        char buf[MAX_BUFF] = {0};
         int64_t cont_len = Utils::StrToDigit(it->second);
 
         //只读了一遍可能没读完
@@ -409,7 +409,7 @@ class HttpResponse
 
 
           //向管道写入数据会卡住，有大小限制， 管道满了就会阻塞
-          if(write(out[0], buf, rlen) < 0)
+          if(write(in[1], buf, rlen) < 0)
             return false;
 
           tlen += rlen;
@@ -419,40 +419,29 @@ class HttpResponse
       //组织响应头部       
       std::string rsp_header;
       rsp_header = info._version + " 200 OK\r\n"; rsp_header += "Connection: close\r\n";
-      rsp_header += "Content-Type: txt/html\r\n";
-      rsp_header += "Etag: " + _etag + "\r\n";
+      rsp_header += "Content-Type: text/html\r\n";
+      rsp_header += "ETag: " + _etag + "\r\n";
       rsp_header += "Last-Modified: " + _mtime + "\r\n";
       rsp_header += "Date: " + _date + "\r\n\r\n";
-      SendData(rsp_header.c_str());
+      SendData(rsp_header);
 
 
-      std::string rsp_body;
-
-      rsp_body = "<html><head>";
-      rsp_body += "<meta charset='UTF-8'>"; 
-      rsp_body += "<title>共享文件服务器</title>";
-      rsp_body +="</head><body><h1> 当前路径" + info._path_info + "</h1>";
-      //按钮
-      rsp_body += "<form action='/upload' method='POST' enctype='multipart/form-data'>";
-      rsp_body += "<input type='file' name='FileUpload' />";
-      rsp_body += "<input type='submit' value='上传' />";
-      rsp_body += "</form>";
-      rsp_body += "<hr /><ol>";
-
-      SendData(rsp_body.c_str());
-
+//
       while(1){
         //从子进程读取所返回的结果
         char buf[MAX_BUFF] = {0};
-        int rlen = read(in[1], buf, MAX_BUFF);
+        int rlen = read(out[0], buf, MAX_BUFF);
         if(rlen == 0)
           break;
 
+        LOG("读取到结果 %s\n", buf);
         send(_cli_sock, buf, rlen, 0);
       }
 
-      rsp_body = "<html><body><h1>UPLOAD SUCCESS! </h1></body></html>";
-      SendData(rsp_body.c_str());
+      close(in[1]);
+      close(out[0]);
+      LOG("结束\n");
+    
       //处理错误
       return true;
     }
@@ -639,27 +628,11 @@ class HttpRequest
         info._hdr_list[hdr_list[i].substr(0, pos)] = hdr_list[i].substr(pos + 2);
       }
 
-      for(auto it = info._hdr_list.begin(); it != info._hdr_list.end(); ++it){
-        //    std::cout << "[" << it->first << "]" << ": " << *it << std::cout;
-      }
 
       return true;
 
     }
 
-    //      RequestInfo& GetRequestInfo(); //向外提供解析结果
-    //      bool ErrHandler(RequestInfo &info);//处理错误响应
-    //      
-    //      bool CGIHandler(RequestInfo &info){
-    //         InitResponse(info); //初始化cgi 响应信息
-    //         ProcessCGI(info); //执行cgi响应
-    //  }
-
-
-    //   bool RequestIsCGI(RequestInfo& info){
-
-    //      return true;
-    //   }
     bool FileIsDir(RequestInfo &info)
     {
       std::string path = info._path_info; 
@@ -685,7 +658,6 @@ class HttpRequest
 
       if(FileIsDir(info)){ //判断文件请求是否是目录
         rsp.ProcessList(info);  //执行展示
-        //  LOG();
       }else{
         rsp.ProcessFile(info); //执行文件下载
       }

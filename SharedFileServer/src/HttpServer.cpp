@@ -45,11 +45,11 @@ class HttpServer
          else{
             //不是，执行目录列表/文件下载响应
             req.FileHandler(info, rsp);
-            LOG("处理玩腻");
           }
     
           close(sock);
-            //dd if=/dev/zero of=./test.txt bs=1G 
+            //dd if=/dev/zero of=./test.txt bs=1G
+            LOG("请求处理完毕\n");
            return true; 
 
             out: 
