@@ -88,6 +88,12 @@ size_t CentralCache::FetchRangeObj(void*& start, void*& end, size_t num, size_t 
 	span->_objlist = cur;
 	span->_usecount += fetchnum;
 	
+	if (span->_objlist == nullptr){
+		spanlist->Erase(span);
+		spanlist->PushBack(span);
+	}
+
+
 	return fetchnum;
 }
 
@@ -106,10 +112,14 @@ void CentralCache::ReleaseListToSpans(void* start, size_t byte_size)
 		//span-》usecount == 0  表示span 切出去的对象都还回来了
 		//释放span 回到pageCache 进行合并
 
+		
+
+
 		//将取下来的块挂回中心位置
 		NEXT_OBJ(start) = span->_objlist;
 		span->_objlist = start;
 
+		
 		if (--span->_usecount == 0)
 		{
 			//将该span从中心cache上取下
@@ -124,6 +134,14 @@ void CentralCache::ReleaseListToSpans(void* start, size_t byte_size)
 
 			PageCache::GetInstance()->ReleaseSpanToPageCahce(span);
 		}
+
+		//如果span 的objlist != nullptr  当一个span 移到头上，方便下一次的取
+		if (span->_objlist != nullptr){
+			spanlist->Erase(span);
+			spanlist->PushFront(span);
+		}
+
+
 		start = next;
 	}
 }

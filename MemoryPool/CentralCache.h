@@ -24,6 +24,7 @@ private:
 	CentralCache(const CentralCache&) = delete;
 	CentralCache& operator=(const CentralCache&) = delete;
 
+
 	static CentralCache _inst;
 
 

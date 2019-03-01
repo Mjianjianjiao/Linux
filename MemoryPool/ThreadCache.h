@@ -23,4 +23,6 @@ private:
 };
 
 //为每一给线程创建一个各自的全局变量
+//静态   无所 解决并发
 static _declspec(thread) ThreadCache* tls_threadcache = nullptr;
+//不是所有的系统都支持， 要使用动态

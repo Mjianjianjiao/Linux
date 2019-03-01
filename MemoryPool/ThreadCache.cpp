@@ -10,7 +10,13 @@ void* ThreadCache::FetchFromCentralCache(size_t index, size_t byte)
 	//批量移动内存， 但是可以可以进行控制，避免过大或过小, 如果对象小的时候，对象大的时侯申请的数量都一样，可能会造成严重的浪费
 	int num_to_move = min(ClassSize::NumMoveSize(byte),freelist->MaxSize());
 
-	
+	// 进行水位线调整控制，使其按照一个慢的增长趋势来进行获取、  每次多去可以减少中心缓存申请， 减少加锁次数加锁次数， 提高效率， 有上限，避免取得多浪费
+	//下一次申请要申请max大小
+	if (num_to_move == freelist->MaxSize())
+	{
+		freelist->SetMaxSize(num_to_move + 1);
+	}
+
 	void* start, *end;  //获取所得到的10个块是连在一起的所以需要，将首尾标出
 	size_t fetchnum = CentralCache::GetInstance()->FetchRangeObj(start, end, num_to_move, byte);  //期望获取10个可能获取的数目并不够，所以要确定实际获得的块数
 	if (fetchnum == 1)
@@ -18,14 +24,9 @@ void* ThreadCache::FetchFromCentralCache(size_t index, size_t byte)
 
 	freelist->PushRange(NEXT_OBJ(start), end, fetchnum-1);  //将第一块返回分配，从第二块开始剩下的挂到空闲链表中，
 	
-	//进行水位线调整控制，使其按照一个慢的增长趋势来进行获取、
-	//下一次申请要申请max大小
-	if (num_to_move == freelist->MaxSize())
-	{
-		freelist->SetMaxSize(num_to_move + 1);
-	}
 	
-	printf("%s \n",start);
+	
+	
 	return start;
 }
 
@@ -39,7 +40,7 @@ void* ThreadCache::Allocate(size_t size)
 	FreeList* freelist = &_freelist[index];  //确定要获取内存块的位置
 	if (!freelist->Empty())
 	{
-		return freelist->Pop();  //不为空取出
+		return freelist->Pop();  //不为空取出  一般都是直接取  无锁 + O（1）
 	}
 	else
 	{
@@ -56,7 +57,7 @@ void ThreadCache::Deallocate(void* ptr, size_t size)
 
 	//当自由链表的数量超过一次从中心缓存移动的数量
 	//开始回收对象到中心缓存
-	if (freelist->Size() >= freelist->MaxSize())
+	if (freelist->Size() > freelist->MaxSize())
 	   ListTooLong(freelist, size);
 	//释放逻辑可以增强：的如果threadcache 总的字节数超过2M ，开始释放
 }

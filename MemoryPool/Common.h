@@ -25,6 +25,35 @@ static inline void*& NEXT_OBJ(void* obj)
 	return *((void**)obj);
 }
 
+static void* SystemAlloc(size_t npage){
+//按页向系统申请
+#ifdef WIN32
+	// 需要向系统申请内存  内存的上限128 不是固定的，是自定义的
+	void* ptr = VirtualAlloc(NULL, (NPAGES - 1) << PAGE_SHIFT, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);  //最大页数是129 的原因是因为跳过了0 
+	if (ptr == nullptr)
+	{
+		throw std::bad_alloc();
+	}
+#else
+	//
+#endif
+
+}
+
+static void* SystemFree(void* ptr){
+	//按页向系统申请
+#ifdef WIN32
+	// 需要向系统申请内存  内存的上限128 不是固定的，是自定义的
+	VirtualFree(ptr, 0, MEM_RELEASE);  //最大页数是129 的原因是因为跳过了0 
+	if (ptr == nullptr)
+	{
+		throw std::bad_alloc();
+	}
+#else
+	//
+#endif
+
+}
 typedef size_t PageID;
 struct Span
 {
@@ -91,6 +120,16 @@ public:
 		Insert(begin(), span);
 	}
 
+	void PushBack(Span* span){
+		Insert(end(), span);
+	}
+
+	void* PopBack(){
+		Span* end = _head->_prev;
+		Erase(end);
+		return end;
+	}
+
 	Span* PopFront()
 	{
 		Span* span = begin();
@@ -120,18 +159,13 @@ public:
 		_size += num;
 	}
 
-	//void* PopRange(void*& start, void*& end, size_t num)
-	//{
-		//取一定数量的内存
-//	}
-
-
 	//将所有的对象块都返回
 	void* Clear()
 	{
 		_size = 0;
+		void* list = _list;
 		_list = nullptr;
-		return _list;
+		return list;
 	}
 
 
@@ -145,6 +179,9 @@ public:
 		return obj;
 	}
 
+
+
+	
 	void Push(void* obj)
 	{
 		NEXT_OBJ(obj) = _list;
@@ -157,7 +194,7 @@ public:
 	}
 
 
-	void SetMaxSize(size_t num){
+	void SetMaxSize(int num){
 		_maxsize += num;
 	}
 	size_t MaxSize()
@@ -173,11 +210,7 @@ private:
 // 管理对齐映射
 class ClassSize
 {
-	// 控制在12%左右的内碎片浪费
-	// [1,128]				8byte对齐 freelist[0,16)
-	// [129,1024]			16byte对齐 freelist[16,72)
-	// [1025,8*1024]		128byte对齐 freelist[72,128)
-	// [8*1024+1,64*1024]	512byte对齐 freelist[128,240)
+	
 public:
 	static inline size_t _Roundup(size_t size, size_t align)
 	{
