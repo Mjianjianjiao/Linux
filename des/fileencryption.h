@@ -8,11 +8,10 @@
 using namespace std;
 
 #include "des.h"
-
 class FileEncryption
 {
 public:
-    FileEncryption(uint32_t key)
+    FileEncryption(uint64_t key)
       :des(key)
   {}
     int encrypt(string input);

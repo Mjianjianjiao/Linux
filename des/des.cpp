@@ -1,7 +1,6 @@
 #include "des.h"
 #include "des_key.h"
 #include "des_data.h"
-#include "des_lookup.h"
 
 //#pragma GCC push_options
 #pragma GCC optimize ("unroll-loops")
